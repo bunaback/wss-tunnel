@@ -1,11 +1,4 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "postCreateCommand": "wget -O /tmp/wstunnel https://github.com/erebe/wstunnel/releases/latest/download/wstunnel-linux-x64 && chmod +x /tmp/wstunnel && /tmp/wstunnel server --restrict-to 127.0.0.1:1080 wss://0.0.0.0:2200 &",
-  "forwardPorts": [2200],
-  "portsAttributes": {
-    "2200": {
-      "label": "wstunnel",
-      "protocol": "https"
-    }
-  }
+  "postCreateCommand": "cat > socks.py << 'EOF'\nimport socket, struct, threading\n\ndef handle(c):\n    try:\n        c.recv(1); nm = c.recv(1)[0]; c.recv(nm); c.sendall(b'\\x05\\x00')\n        ver,cmd,rsv,atyp = struct.unpack('!BBBB', c.recv(4))\n        if cmd != 1: c.close(); return\n        if atyp == 1: addr = socket.inet_ntoa(c.recv(4))\n        elif atyp == 3: l = c.recv(1)[0]; addr = c.recv(l).decode()\n        else: c.close(); return\n        port = struct.unpack('!H', c.recv(2))[0]\n        rem = socket.create_connection((addr,port))\n        c.sendall(b'\\x05\\x00\\x00\\x01\\x00\\x00\\x00\\x00\\x00\\x00')\n        def fwd(a,b):\n            while True:\n                try:\n                    d = a.recv(4096)\n                    if not d: break\n                    b.sendall(d)\n                except: break\n            a.close(); b.close()\n        threading.Thread(target=fwd, args=(c,rem)).start()\n        threading.Thread(target=fwd, args=(rem,c)).start()\n    except: c.close()\n\ns = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\ns.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\ns.bind(('0.0.0.0',1080))\ns.listen(50)\nwhile True:\n    c,a = s.accept()\n    threading.Thread(target=handle, args=(c,)).start()\nEOF\npython3 socks.py &\nsleep 1\nwget -O bore.tgz https://github.com/ekzhang/bore/releases/download/v0.5.2/bore-v0.5.2-x86_64-unknown-linux-musl.tar.gz 2>/dev/null\ntar xzf bore.tgz\n./bore local 1080 --to bore.pub --port 0 > /tmp/bore.log 2>&1 &\nsleep 2\ncat /tmp/bore.log\n"
 }
