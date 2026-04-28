@@ -1,0 +1,11 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "postCreateCommand": "wget -O /tmp/wstunnel https://github.com/erebe/wstunnel/releases/latest/download/wstunnel-linux-x64 && chmod +x /tmp/wstunnel && /tmp/wstunnel server --restrict-to 127.0.0.1:1080 wss://0.0.0.0:2200 &",
+  "forwardPorts": [2200],
+  "portsAttributes": {
+    "2200": {
+      "label": "wstunnel",
+      "protocol": "https"
+    }
+  }
+}
