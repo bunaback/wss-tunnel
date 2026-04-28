@@ -1,4 +1,11 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "postCreateCommand": "cat > /tmp/socks5.py << 'EOF'\nimport socket,struct,threading\ndef h(c):\n try:\n  c.recv(2);c.sendall(b'\\x05\\x00')\n  d=c.recv(4);v,cmd,_,a=d[0],d[1],d[2],d[3]\n  if cmd!=1:return\n  if a==1:addr=socket.inet_ntoa(c.recv(4))\n  elif a==3:l=c.recv(1)[0];addr=c.recv(l).decode()\n  else:return\n  p=int.from_bytes(c.recv(2),'big')\n  r=socket.create_connection((addr,p),5)\n  c.sendall(b'\\x05\\x00\\x00\\x01\\x00\\x00\\x00\\x00\\x00\\x00')\n  while 1:\n   d=c.recv(4096)\n   if not d:break\n   r.sendall(d)\n   d=r.recv(4096)\n   if not d:break\n   c.sendall(d)\n except:pass\n finally:\n  try:c.close()\n  except:pass\n  try:r.close()\n  except:pass\ns=socket.socket();s.setsockopt(1,1,1);s.bind(('0.0.0.0',1080));s.listen(50)\nwhile 1:\n cl,_=s.accept();threading.Thread(target=h,args=(cl,)).start()\nEOF\npython3 /tmp/socks5.py &\nsleep 2\n# تونل با localhost.run\necho '--- Public URL ---'\nssh -o StrictHostKeyChecking=no -R 80:localhost:1080 nokey@localhost.run 2>&1 | grep -o 'https://[a-zA-Z0-9.-]*'\n"
+  "postCreateCommand": "cat > /tmp/socks5.py << 'EOF'\nimport socket,struct,threading\ndef h(c):\n try:\n  c.recv(2);c.sendall(b'\\x05\\x00')\n  d=c.recv(4);v,cmd,_,a=d[0],d[1],d[2],d[3]\n  if cmd!=1:return\n  if a==1:addr=socket.inet_ntoa(c.recv(4))\n  elif a==3:l=c.recv(1)[0];addr=c.recv(l).decode()\n  else:return\n  p=int.from_bytes(c.recv(2),'big')\n  r=socket.create_connection((addr,p),5)\n  c.sendall(b'\\x05\\x00\\x00\\x01\\x00\\x00\\x00\\x00\\x00\\x00')\n  def f(src,dst):\n   while 1:\n    d=src.recv(4096)\n    if not d:break\n    dst.sendall(d)\n  threading.Thread(target=f,args=(c,r)).start()\n  threading.Thread(target=f,args=(r,c)).start()\n except:pass\ns=socket.socket();s.setsockopt(1,1,1);s.bind(('0.0.0.0',1080));s.listen(50)\nwhile 1:\n cl,_=s.accept();threading.Thread(target=h,args=(cl,)).start()\nEOF\npython3 /tmp/socks5.py",
+  "forwardPorts": [1080],
+  "portsAttributes": {
+    "1080": {
+      "label": "socks5",
+      "protocol": "https"
+    }
+  }
 }
